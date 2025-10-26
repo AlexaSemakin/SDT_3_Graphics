@@ -1,0 +1,120 @@
+@startuml
+left to right direction
+
+' ==== Базовые классы Qt (только ключевые для наследования) ====
+class QMainWindow
+class QAbstractTableModel
+
+' ==== Основные классы ====
+AppWindow --|> QMainWindow
+FileBrowserModel --|> QAbstractTableModel
+
+' ==== Observer-паттерн ====
+abstract class IObserver {
+  + <i>void updateDisplay(sizesMap: Map<String, Integer>)</i>
+}
+
+abstract class IObservable {
+  + Boolean addObserver(observer: IObserver)
+  + Boolean delObserver(observer: IObserver)
+  + <i>void selectionEvent(sizesMap: Map<String, Integer>)</i>
+}
+
+IObservable o-- "0..*" IObserver : observers
+
+' ==== Стратегии (Strategy pattern) ====
+abstract class ISizeMapper {
+  + <i>void getSizesMap(dirPath: String)</i>
+  + <i>void selectionEvent(sizesMap: Map<String, Integer>)</i>
+}
+ISizeMapper ..|> IObservable
+
+class DirSizeMapper {
+  + <i>void getSizesMap(dirPath: String)</i>
+}
+DirSizeMapper ..|> ISizeMapper
+
+class TypeSizeMapper {
+  + <i>void getSizesMap(dirPath: String)</i>
+}
+TypeSizeMapper ..|> ISizeMapper
+
+' ==== Диаграммы ====
+abstract class IChart {
+  + QChart CreateChart(sizesMap: Map<String, Integer>)
+  - <i>Series getSeries(sizesMap: Map<String, Integer>)</i>
+  - void setLegend(legend)
+}
+
+class BarChart {
+  - <i>Series getSeries(sizesMap: Map<String, Integer>)</i>
+}
+BarChart ..|> IChart
+
+class PieChart {
+  - <i>Series getSeries(sizesMap: Map<String, Integer>)</i>
+}
+
+' ==== GUI-классы ====
+class AppWindow {
+  ' создаёт BrowserPane и стратегии
+}
+
+class BrowserPane {
+  + <i>void updateDisplay(sizesMap: Map<String, Integer>)</i>
+  + void addStrategy(name: String, mapper: ISizeMapper*)
+}
+
+class TableView {
+  + void setData(sizesMap: Map<String, Integer>)
+}
+
+class BarChartView {
+  + void setData(sizesMap: Map<String, Integer>)
+}
+
+class PieChartView {
+  + void setData(sizesMap: Map<String, Integer>)
+}
+
+class FileBrowserModel {
+  + void setData(sizesMap: Map<String, Integer>)
+  + <i>Integer rowCount(parent) const</i>
+  + <i>Integer columnCount(parent) const</i>
+  + <i>Any headerData(section, orientation, role) const</i>
+  + <i>Any data(index, role) const</i>
+}
+
+' ==== Композиции / Агрегации / Зависимости ====
+
+' AppWindow владеет BrowserPane и стратегиями
+AppWindow *-- BrowserPane
+AppWindow o-- "2" ISizeMapper : dirMapper, typeMapper
+AppWindow ..> DirSizeMapper : creates
+AppWindow ..> TypeSizeMapper : creates
+AppWindow ..> BrowserPane : uses(addStrategy)
+
+' BrowserPane композитно содержит вьюхи
+BrowserPane *-- TableView
+BrowserPane *-- BarChartView
+BrowserPane *-- PieChartView
+
+' BrowserPane хранит стратегии (агрегация)
+BrowserPane o-- "0..*" ISizeMapper : strategies
+BrowserPane ..|> IObserver : implements
+
+' TableView владеет FileBrowserModel
+TableView *-- FileBrowserModel : model
+
+' View владеют фабриками диаграмм
+BarChartView *-- IChart : factory
+PieChartView *-- IChart : factory
+BarChartView ..> BarChart : creates
+PieChartView ..> PieChart : creates
+
+PieChart ..|> IChart
+
+
+' ISizeMapper уведомляет наблюдателя (BrowserPane)
+ISizeMapper ..> IObserver : notify(updateDisplay)
+@enduml
